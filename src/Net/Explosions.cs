@@ -34,10 +34,19 @@ namespace RDR2Coop.Net
         public static int FromWeapon(uint weapon) =>
             weapon == ThrownMolotov ? 2 : weapon == ThrownDynamite ? 25 : -1;
 
+        // The tags of the fire an explosion leaves (9 DirFlame, 18 DirFlameExplode): a fire
+        // bottle's own blast can be gone while only its fire is left, which must not hide it.
+        public static bool FireTag(int tag) => tag == 9 || tag == 18;
+
         // What to send for one of our blasts: the tag the game showed (a bundle stays a bundle,
-        // a volatile bottle volatile), else the thrown weapon's kind, else -1. A fire bottle's
-        // fire tag must not hide it.
-        public static int Decide(int shown, uint weapon) => Kinds.ContainsKey(shown) ? shown : FromWeapon(weapon);
+        // a volatile bottle volatile); else the thrown weapon's kind, unless another, non-fire
+        // kind is there (a wagon or barrel the thrown weapon set off stays ours alone).
+        public static int Decide(int shown, uint weapon, int other)
+        {
+            if (Kinds.ContainsKey(shown)) return shown;
+            if (other >= 0 && !FireTag(other)) return -1;
+            return FromWeapon(weapon);
+        }
 
         public static string Write(int kind, Vec3 at) =>
             string.Format(CultureInfo.InvariantCulture, "{0} {1:0.00} {2:0.00} {3:0.00}", kind, at.X, at.Y, at.Z);

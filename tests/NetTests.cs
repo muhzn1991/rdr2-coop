@@ -2357,11 +2357,15 @@ static class NetTests
               "the thrown weapons' hashes are the game's");
         Check(Blast.FromWeapon(Blast.ThrownMolotov) == 2 && Blast.FromWeapon(Blast.ThrownDynamite) == 25 && Blast.FromWeapon(0x12345678) < 0,
               "only thrown explosives map to a kind");
-        Check(Blast.Decide(-1, Blast.ThrownMolotov) == 2 && Blast.Decide(-1, Blast.ThrownDynamite) == 25,
+        Check(Blast.Decide(-1, Blast.ThrownMolotov, -1) == 2 && Blast.Decide(-1, Blast.ThrownDynamite, -1) == 25,
               "a thrown weapon names its blast when the game's tag is gone");
-        Check(Blast.Decide(3, Blast.ThrownMolotov) == 3 && Blast.Decide(27, Blast.ThrownDynamite) == 27,
+        Check(Blast.Decide(3, Blast.ThrownMolotov, 9) == 3 && Blast.Decide(27, Blast.ThrownDynamite, 9) == 27,
               "the tag the game showed wins (a volatile bottle stays volatile)");
-        Check(Blast.Decide(-1, 0x12345678) < 0 && Blast.Decide(5, 0) < 0, "a gun's wagon blast stays ours alone");
+        Check(Blast.Decide(-1, Blast.ThrownMolotov, 9) == 2 && Blast.Decide(-1, Blast.ThrownMolotov, 18) == 2,
+              "the fire a bottle leaves doesn't hide it");
+        Check(Blast.Decide(-1, Blast.ThrownMolotov, 5) < 0 && Blast.Decide(-1, Blast.ThrownDynamite, 7) < 0,
+              "a wagon's or pump's tag there keeps the thrown weapon from claiming the blast");
+        Check(Blast.Decide(-1, 0x12345678, -1) < 0 && Blast.Decide(5, 0, -1) < 0, "a gun's wagon blast stays ours alone");
         Check(!Blast.Read("5 1 2 3", out _, out _) && !Blast.Read("33 1 2 3", out _, out _), "a wagon's or lightning's explosion isn't passed on");
         foreach (var bad in new[] { null, "", "25 1 2", "x 1 2 3", "25 NaN 2 3", "25 1 Infinity 3", "25 1 2 30000", "25 1,5 2 3" })
             Check(!Blast.Read(bad, out _, out _), "refused: " + (bad ?? "null"));

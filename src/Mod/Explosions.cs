@@ -64,8 +64,8 @@ namespace RDR2Coop.Mod
         }
 
         // The kind is the one the game shows there (it can take a frame or two). If none ever showed,
-        // thrown dynamite and fire bottles go by the weapon; another kind there (a wagon or barrel it
-        // set off) stays ours alone.
+        // a thrown dynamite or fire bottle goes by the weapon; the fire it leaves doesn't count as
+        // another kind, but a wagon or barrel it set off does and stays ours alone.
         void SendOurs(ServerLink link, long now)
         {
             _sent.RemoveAll(s => now - s.Ms > 1000);
@@ -73,12 +73,14 @@ namespace RDR2Coop.Mod
             {
                 var s = _ours[i];
                 s.Kind = KindAt(CoopScript.ToGame(s.At), out int other);
-                if (other >= 0) s.Other = other;
+                // Keep the first foreign tag; a non-fire one (a wagon or barrel) sticks, so a later
+                // tick that only shows the fire can't make the thrown weapon claim that blast.
+                if (other >= 0 && (s.Other < 0 || !Blast.FireTag(other))) s.Other = other;
                 if (s.Kind < 0 && now - s.Ms < 600) { _ours[i] = s; continue; }   // not showing yet: look again next frame
                 _ours.RemoveAt(i);
                 // Not the tag we pass on (a fire bottle's own explosion is gone, only its fire is
                 // there): a thrown weapon still says what it was.
-                s.Kind = Blast.Decide(s.Kind, s.Weapon);
+                s.Kind = Blast.Decide(s.Kind, s.Weapon, s.Other);
                 if (s.Kind < 0) { Note($"explosions: ours (weapon {s.Weapon:X8}, tag {s.Other}) isn't a kind we pass on", now); continue; }
                 if (!_outGate.Allow(now)) continue;
                 _sent.Add(s);
