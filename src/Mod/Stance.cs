@@ -105,7 +105,7 @@ namespace RDR2Coop.Mod
                     CoopScript.Log($"a stand-in's {_diveKind}: diving {PED.IS_PED_DIVING(ped)}, jumping {PED.IS_PED_JUMPING(ped)}, ragdoll {PED.IS_PED_RAGDOLL(ped)}");
             }
             if ((step & StanceStep.Climb) != 0) TASK.TASK_CLIMB(ped, true);   // climbs or vaults the nearest thing: what they climbed
-            if ((step & StanceStep.Ragdoll) != 0) PED.SET_PED_TO_RAGDOLL(ped, 1000, StanceTracker.RagdollMs, 0, false, false, null);
+            if ((step & StanceStep.Ragdoll) != 0 && !PED.IS_PED_RAGDOLL(ped)) PED.SET_PED_TO_RAGDOLL(ped, 1000, StanceTracker.RagdollMs, 0, false, false, null);
             // Still below the wall they climbed, or up where they jumped or fell from: put it beside them.
             if ((step & StanceStep.CheckLevel) != 0 && StanceTracker.OffLevel(CoopScript.ToNet(Peds.Position(ped)), s.Position))
                 ENTITY._SET_ENTITY_COORDS_AND_HEADING(ped, them, s.Heading, false, false, false);

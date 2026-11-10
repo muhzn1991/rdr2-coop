@@ -873,7 +873,7 @@ namespace RDR2Coop.Mod
                 Trace("tick: take hits");
                 foreach (var kv in followers)
                 {
-                    int damage = kv.Value.TakeHits(me.Handle, out int bone);
+                    int damage = kv.Value.TakeHits(me.Handle, out int bone, now);
                     if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone); LogHitSent(kv.Key, damage, bone, now); }
                 }
             }
@@ -1007,7 +1007,7 @@ namespace RDR2Coop.Mod
             _owned.Tick(_link, linkedPuppets, puppets.Values, positions, now);
             foreach (var kv in linkedPuppets)
             {
-                int damage = kv.Value.TakeHits(me.Handle, out int bone, OwnedWorld.Skip);   // our NPCs hurting their stand-in: theirs to feel (copies' hits are their own games')
+                int damage = kv.Value.TakeHits(me.Handle, out int bone, now, OwnedWorld.Skip);   // our NPCs hurting their stand-in: theirs to feel (copies' hits are their own games')
                 if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone); LogHitSent(kv.Key, damage, bone, now); }
             }
             if (lead == myId) { _law.OwnerTick(_link, linkedPuppets, now); _doors.Tick(_link, lead, positions, now); }
@@ -1077,6 +1077,16 @@ namespace RDR2Coop.Mod
             if (me == null || !me.Exists() || me.IsDead) return;
             if (_down.WouldFinish(hit.Damage)) { _down.GoDown($"hit by an NPC in {_link.NameOf(from)}'s game"); return; }
             PED.APPLY_DAMAGE_TO_PED(me.Handle, hit.Damage, 0, hit.Bone, 0);
+            Stagger(me, hit);
+        }
+
+        // Our game decides how we take the owner's NPC hit: a hard or head hit throws us backwards.
+        // The pose stream then shows that to the host's stand-in (Stance's Ragdoll flag).
+        static void Stagger(Ped me, Hit hit)
+        {
+            if (!Hit.Ragdolls(hit.Damage, hit.Bone) || PED.IS_PED_RAGDOLL(me.Handle)) return;
+            var f = ENTITY.GET_ENTITY_FORWARD_VECTOR(me.Handle);
+            PED.SET_PED_TO_RAGDOLL_WITH_FALL(me.Handle, 600, 1200, 0, -f.X, -f.Y, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
         }
 
         PlayerState Capture(Ped me, long now)

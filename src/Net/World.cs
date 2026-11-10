@@ -349,8 +349,13 @@ namespace RDR2Coop.Net
         public const int HeadBone = 21030;   // SKEL_Head
         public const short Kill = short.MaxValue;   // we killed our copy outright (fists, a finishing move): the owner's NPC dies too
         public const int MaxDamage = 1000;          // no gun does more
+        public const int StaggerDamage = 20;        // a hit this hard knocks a player off balance
         /// <summary>A hit's damage worth applying: a gun's, or the kill marker. Anything else is a bad packet.</summary>
         public static bool Sane(short damage) => damage >= 1 && (damage <= MaxDamage || damage == Kill);
+
+        /// <summary>Does this hit throw the victim down? The victim's own game decides the reaction; the
+        /// host only shows its outcome from the pose stream.</summary>
+        public static bool Ragdolls(int damage, int bone) => damage >= StaggerDamage || bone == HeadBone;
 
         /// <summary>The damage a trap read, as a Hit carries it: the cap Sane accepts, so a big hit reads as
         /// MaxDamage instead of being dropped by the receiver (a mirror sender does the same).</summary>

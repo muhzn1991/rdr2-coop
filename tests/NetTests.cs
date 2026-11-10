@@ -1995,7 +1995,7 @@ static class NetTests
             PedModel = 0xD7F1E7F6, Position = new Vec3(-300.5f, 800.25f, 117f), Heading = 271.5f,
             Velocity = new Vec3(3, -1, 0.5f), MountModel = 0x2B5D4F3C,
             MountPosition = new Vec3(-300.4f, 800.2f, 116f), MountHeading = 270f, Following = 2, Weapon = 0x169F59F7,
-            Pose = PoseFlags.Crouching | PoseFlags.Aiming, Shots = 7, AimAt = new Vec3(-310f, 805f, 120.5f), Scenario = 0xAABBCCDD,
+            Pose = PoseFlags.Crouching | PoseFlags.Aiming | PoseFlags.Ragdoll, Shots = 7, AimAt = new Vec3(-310f, 805f, 120.5f), Scenario = 0xAABBCCDD,
             Carrying = 0x11223344, CarryKind = 1, Wet = 200, Dirt = 50, Health = 180, RidingWith = 3, VehicleOwner = 2,
         };
         var bytes = Protocol.State(s);
@@ -2008,7 +2008,7 @@ static class NetTests
         Near(r.MountHeading, 270f, "mount heading");
         Check(r.Mounted && !r.Dead && r.Following == 2, "flag helpers + following");
         Check(r.Weapon == 0x169F59F7, "weapon in hand");
-        Check(r.Pose == (PoseFlags.Crouching | PoseFlags.Aiming) && r.Shots == 7 && r.Scenario == 0xAABBCCDD && r.Carrying == 0x11223344
+        Check(r.Pose == (PoseFlags.Crouching | PoseFlags.Aiming | PoseFlags.Ragdoll) && r.Shots == 7 && r.Scenario == 0xAABBCCDD && r.Carrying == 0x11223344
               && r.CarryKind == 1 && r.Wet == 200 && r.Dirt == 50 && r.Health == 180 && r.RidingWith == 3, "pose block");
         Check(r.VehicleOwner == 2, "vehicle owner (bubbles)");
         var v080 = Protocol.Read(bytes, bytes.Length - 1);   // a 0.8.0 - 0.9.0-beta.8 state: no vehicle owner on the end
@@ -2994,6 +2994,8 @@ static class NetTests
         Check(Hit.Sane(1) && Hit.Sane(Hit.MaxDamage), "a gun's damage");
         Check(Hit.Sane(Hit.Kill), "the kill marker a guest sends when it killed its copy outright (dropped since beta.8)");
         Check(!Hit.Sane(0) && !Hit.Sane(-5) && !Hit.Sane(Hit.MaxDamage + 1) && !Hit.Sane(Hit.Kill - 1), "anything else is a bad packet");
+        Check(!Hit.Ragdolls(Hit.StaggerDamage - 1, 0) && Hit.Ragdolls(Hit.StaggerDamage, 0) && Hit.Ragdolls(1, Hit.HeadBone),
+              "a hard hit or a headshot throws the victim down");
         Check(Hit.FromTrap(1) == 1 && Hit.FromTrap(Hit.MaxDamage) == Hit.MaxDamage, "a normal hit goes as read");
         Check(Hit.FromTrap(Hit.MaxDamage + 1) == Hit.MaxDamage && Hit.FromTrap(9000) == Hit.MaxDamage,
               "a trap's big hit is capped, not a packet the owner drops");

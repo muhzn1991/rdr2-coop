@@ -167,9 +167,30 @@ namespace RDR2Coop.Mod
             ENTITY.SET_ENTITY_HEALTH(ped, TrapHealth, 0);
         }
 
+        // EVENT_ENTITY_DAMAGED: 0 damaged, 1 damager (ped or object), 2 weapon, 3 ammo, 4 damage, 6-8 coords.
+        const uint EntityDamagedEvent = 0x18010D37;
+
+        // Whether this tick's damage event names a ped (not `ignore`) as the one that hurt `ped`: the
+        // fallback for HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, which may not count NPC weapon damage.
+        public static unsafe bool EventSaysPedHit(int ped, int ignore, long now)
+        {
+            var events = AiEvents.Now(now);
+            ulong* data = stackalloc ulong[9];
+            for (int i = 0; i < events.Count; i++)
+            {
+                if (events[i] != EntityDamagedEvent || !SCRIPTS.GET_EVENT_DATA(AiEvents.Queue, i, data, 9)) continue;
+                if (unchecked((int)data[0]) != ped) continue;
+                int damager = unchecked((int)data[1]);
+                if (damager == 0 || damager == ignore || !Exists(damager) || !ENTITY.IS_ENTITY_A_PED(damager) || PED.IS_PED_A_PLAYER(damager)) continue;
+                return true;
+            }
+            return false;
+        }
+
         // Damage dealt by a ped since the last check (0 if none). `attacker`
         // restricts it to one ped; `ignore` skips one ped (friendly fire).
-        public static unsafe int TakeTrapped(int ped, int attacker, int ignore, out int bone, ICollection<int> ignoreAlso = null)
+        // anyPedFallback: the event queue already named a ped (see EventSaysPedHit).
+        public static unsafe int TakeTrapped(int ped, int attacker, int ignore, out int bone, ICollection<int> ignoreAlso = null, bool anyPedFallback = false)
         {
             bone = 0;
             int health = ENTITY.GET_ENTITY_HEALTH(ped);
@@ -177,7 +198,7 @@ namespace RDR2Coop.Mod
 
             bool byPed = attacker != 0
                 ? ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, attacker, true, true)
-                : ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(ped);
+                : ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(ped) || anyPedFallback;
             if (ignore != 0 && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, ignore, true, true)) byPed = false;
             if (byPed && ignoreAlso != null) foreach (int h in ignoreAlso) if (ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, h, true, true)) { byPed = false; break; }   // only once damaged: rare
 

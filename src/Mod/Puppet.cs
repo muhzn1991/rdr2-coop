@@ -156,10 +156,13 @@ namespace RDR2Coop.Mod
 
         // Damage our NPCs did to the puppet since the last call (our own shots
         // don't count), for that player to take.
-        public int TakeHits(int myPed, out int bone, ICollection<int> ignoreAlso = null)
+        public int TakeHits(int myPed, out int bone, long now, ICollection<int> ignoreAlso = null)
         {
             bone = 0;
-            return _catchHits && Exists ? Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso) : 0;
+            if (!_catchHits || !Exists) return 0;
+            // The event queue is only worth scanning when the trap actually lost health this tick.
+            bool eventPed = ENTITY.GET_ENTITY_HEALTH(_ped) < Peds.TrapHealth && Peds.EventSaysPedHit(_ped, myPed, now);
+            return Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso, eventPed);
         }
 
         void FollowMounted(PlayerState s, long now)
