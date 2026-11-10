@@ -160,9 +160,22 @@ namespace RDR2Coop.Mod
         {
             bone = 0;
             if (!_catchHits || !Exists) return 0;
-            // The event queue is only worth scanning when the trap actually lost health this tick.
-            bool eventPed = ENTITY.GET_ENTITY_HEALTH(_ped) < Peds.TrapHealth && Peds.EventSaysPedHit(_ped, myPed, now);
+            // The event queue is only worth scanning when the trap actually lost health, and only when
+            // ANY_PED didn't already name it: then the fallback is what makes the hit a packet, and the
+            // log says so.
+            bool damaged = ENTITY.GET_ENTITY_HEALTH(_ped) < Peds.TrapHealth;
+            bool anyPed = damaged && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(_ped);
+            bool eventPed = damaged && !anyPed && Peds.EventSaysPedHit(_ped, myPed, now);
+            if (eventPed) NoteEventFallback(now);
             return Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso, eventPed);
+        }
+
+        static long _eventFallbackLogMs;
+        static void NoteEventFallback(long now)
+        {
+            if (now - _eventFallbackLogMs < 5000) return;
+            _eventFallbackLogMs = now;
+            CoopScript.Log("hit: attribution by damage event (HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED didn't name the ped)");
         }
 
         void FollowMounted(PlayerState s, long now)
