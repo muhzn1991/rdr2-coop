@@ -91,6 +91,7 @@ namespace RDR2Coop.Mod
         {
             if (on == _catchHits || !Exists) return;
             _catchHits = on;
+            CoopScript.Log($"catch hits {(on ? "on" : "off")} for a stand-in (area/Following changed)");
             if (on) Peds.ArmTrap(_ped);
             else
             {
@@ -156,26 +157,34 @@ namespace RDR2Coop.Mod
 
         // Damage our NPCs did to the puppet since the last call (our own shots
         // don't count), for that player to take.
-        public int TakeHits(int myPed, out int bone, long now, ICollection<int> ignoreAlso = null)
+        public int TakeHits(int myPed, out int bone, out uint weapon, long now, ICollection<int> ignoreAlso = null)
         {
-            bone = 0;
+            bone = 0; weapon = 0;
             if (!_catchHits || !Exists) return 0;
-            // The event queue is only worth scanning when the trap actually lost health, and only when
-            // ANY_PED didn't already name it: then the fallback is what makes the hit a packet, and the
-            // log says so.
-            bool damaged = ENTITY.GET_ENTITY_HEALTH(_ped) < Peds.TrapHealth;
+            // The event queue is only worth scanning when the trap actually lost health. It also gives
+            // the weapon the host's NPC used (Hit.Weapon is 0 on the ANY_PED-only path).
+            int health = ENTITY.GET_ENTITY_HEALTH(_ped);
+            bool damaged = health < Peds.TrapHealth;
             bool anyPed = damaged && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(_ped);
-            bool eventPed = damaged && !anyPed && Peds.EventSaysPedHit(_ped, myPed, now);
-            if (eventPed) NoteEventFallback(now);
+            bool eventPed = damaged && Peds.EventSaysPedHit(_ped, myPed, now, out weapon);
+            if (eventPed && !anyPed) NoteEventFallback(now);
+            if (damaged && !anyPed && !eventPed) NoteUnattributed(Peds.TrapHealth - health, now);
             return Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso, eventPed);
         }
 
-        static long _eventFallbackLogMs;
+        static long _eventFallbackLogMs, _unattributedLogMs;
         static void NoteEventFallback(long now)
         {
             if (now - _eventFallbackLogMs < 5000) return;
             _eventFallbackLogMs = now;
             CoopScript.Log("hit: attribution by damage event (HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED didn't name the ped)");
+        }
+        // Proves cause B next time: the trap lost health but neither ANY_PED nor the event named a ped.
+        static void NoteUnattributed(int lost, long now)
+        {
+            if (now - _unattributedLogMs < 5000) return;
+            _unattributedLogMs = now;
+            CoopScript.Log($"hit: health lost {lost} but no ped named it (ANY_PED and damage event both missed)");
         }
 
         void FollowMounted(PlayerState s, long now)

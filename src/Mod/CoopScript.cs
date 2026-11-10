@@ -873,8 +873,8 @@ namespace RDR2Coop.Mod
                 Trace("tick: take hits");
                 foreach (var kv in followers)
                 {
-                    int damage = kv.Value.TakeHits(me.Handle, out int bone, now);
-                    if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone); LogHitSent(kv.Key, damage, bone, now); }
+                    int damage = kv.Value.TakeHits(me.Handle, out int bone, out uint weapon, now);
+                    if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone, weapon); LogHitSent(kv.Key, damage, bone, weapon, now); }
                 }
             }
             else
@@ -1007,8 +1007,8 @@ namespace RDR2Coop.Mod
             _owned.Tick(_link, linkedPuppets, puppets.Values, positions, now);
             foreach (var kv in linkedPuppets)
             {
-                int damage = kv.Value.TakeHits(me.Handle, out int bone, now, OwnedWorld.Skip);   // our NPCs hurting their stand-in: theirs to feel (copies' hits are their own games')
-                if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone); LogHitSent(kv.Key, damage, bone, now); }
+                int damage = kv.Value.TakeHits(me.Handle, out int bone, out uint weapon, now, OwnedWorld.Skip);   // our NPCs hurting their stand-in: theirs to feel (copies' hits are their own games')
+                if (damage > 0) { _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone, weapon); LogHitSent(kv.Key, damage, bone, weapon, now); }
             }
             if (lead == myId) { _law.OwnerTick(_link, linkedPuppets, now); _doors.Tick(_link, lead, positions, now); }
             else _doors.Tick(_link, lead, null, now);
@@ -1044,11 +1044,11 @@ namespace RDR2Coop.Mod
 
         // Throttled like OnHit's, with the count it hid: the next test can tell "the host sent
         // nothing" (no line) from "the host sent, but the client logged no hit from".
-        void LogHitSent(byte to, int damage, int bone, long now)
+        void LogHitSent(byte to, int damage, int bone, uint weapon, long now)
         {
             if (now - _hitSentLogMs <= 1000) { _hitSentLogSkipped++; return; }
             _hitSentLogMs = now;
-            Log($"hit -> {_link.NameOf(to)}: entity 0, damage {Hit.FromTrap(damage)} (bone {bone}{(_hitSentLogSkipped > 0 ? $", {_hitSentLogSkipped} more in the last second" : "")})");
+            Log($"hit -> {_link.NameOf(to)}: entity 0, damage {Hit.FromTrap(damage)} (bone {bone}, weapon {weapon:X8}{(_hitSentLogSkipped > 0 ? $", {_hitSentLogSkipped} more in the last second" : "")})");
             _hitSentLogSkipped = 0;
         }
 
@@ -1056,7 +1056,7 @@ namespace RDR2Coop.Mod
         {
             long nowMs = _clock.ElapsedMilliseconds;
             bool sane = Hit.Sane(hit.Damage);
-            if (nowMs - _hitLogMs > 1000) { _hitLogMs = nowMs; Log($"hit from {_link.NameOf(from)}: entity {hit.EntityId}, damage {hit.Damage}{(sane ? "" : " (bad packet: dropped)")} (we run area {_owner}, they follow {(_remotes.TryGetValue(from, out var rr) && rr.HasLast ? rr.Last.Following : -1)})"); }
+            if (nowMs - _hitLogMs > 1000) { _hitLogMs = nowMs; Log($"hit from {_link.NameOf(from)}: entity {hit.EntityId}, damage {hit.Damage}, weapon {hit.Weapon:X8}{(sane ? "" : " (bad packet: dropped)")} (we run area {_owner}, they follow {(_remotes.TryGetValue(from, out var rr) && rr.HasLast ? rr.Last.Following : -1)})"); }
             if (!sane) return;
             if (hit.EntityId != 0)
             {

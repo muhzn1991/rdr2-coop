@@ -172,8 +172,9 @@ namespace RDR2Coop.Mod
 
         // Whether this tick's damage event names a ped (not `ignore`) as the one that hurt `ped`: the
         // fallback for HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, which may not count NPC weapon damage.
-        public static unsafe bool EventSaysPedHit(int ped, int ignore, long now)
+        public static unsafe bool EventSaysPedHit(int ped, int ignore, long now, out uint weapon)
         {
+            weapon = 0;
             var events = AiEvents.Now(now);
             ulong* data = stackalloc ulong[9];
             for (int i = 0; i < events.Count; i++)
@@ -182,6 +183,7 @@ namespace RDR2Coop.Mod
                 if (unchecked((int)data[0]) != ped) continue;
                 int damager = unchecked((int)data[1]);
                 if (damager == 0 || damager == ignore || !Exists(damager) || !ENTITY.IS_ENTITY_A_PED(damager) || PED.IS_PED_A_PLAYER(damager)) continue;
+                weapon = unchecked((uint)data[2]);
                 return true;
             }
             return false;

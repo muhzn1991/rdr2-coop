@@ -87,7 +87,10 @@ namespace RDR2Coop.Mod
                 _crouchMs = now;
             }
             var them = CoopScript.ToGame(s.Position);
-            bool near = (s.Pose & Moves) != 0 && Peds.Position(ped).DistanceTo(them) < 3f;   // only read while they make a move
+            bool ragdoll = (s.Pose & PoseFlags.Ragdoll) != 0;
+            // A ragdoll is a real state, not a move that a teleport could fake: show it wherever the
+            // stand-in is. Other moves only within 3 m, as before.
+            bool near = ragdoll || ((s.Pose & Moves) != 0 && Peds.Position(ped).DistanceTo(them) < 3f);
             var step = _moves.Update(s.Pose, near, now);
             if ((step & StanceStep.Jump) != 0) TASK.TASK_JUMP(ped, true);
             if ((step & StanceStep.Dive) != 0) { TASK.TASK_JUMP(ped, true); _diveCheckAt = now + 300; _diveKind = "a dive"; }   // a leap from where it runs: off the edge into the water, or forward
