@@ -2994,6 +2994,10 @@ static class NetTests
         Check(Hit.Sane(1) && Hit.Sane(Hit.MaxDamage), "a gun's damage");
         Check(Hit.Sane(Hit.Kill), "the kill marker a guest sends when it killed its copy outright (dropped since beta.8)");
         Check(!Hit.Sane(0) && !Hit.Sane(-5) && !Hit.Sane(Hit.MaxDamage + 1) && !Hit.Sane(Hit.Kill - 1), "anything else is a bad packet");
+        Check(Hit.FromTrap(1) == 1 && Hit.FromTrap(Hit.MaxDamage) == Hit.MaxDamage, "a normal hit goes as read");
+        Check(Hit.FromTrap(Hit.MaxDamage + 1) == Hit.MaxDamage && Hit.FromTrap(9000) == Hit.MaxDamage,
+              "a trap's big hit is capped, not a packet the owner drops");
+        Check(Hit.Sane(Hit.FromTrap(9000)), "what a trap sends always passes the owner's check");
     }
 
     static void RetryBookWaits()

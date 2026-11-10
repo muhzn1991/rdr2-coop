@@ -874,7 +874,7 @@ namespace RDR2Coop.Mod
                 foreach (var kv in followers)
                 {
                     int damage = kv.Value.TakeHits(me.Handle, out int bone);
-                    if (damage > 0) _link.SendHit(kv.Key, 0, (short)Math.Min(damage, short.MaxValue), bone);
+                    if (damage > 0) _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone);
                 }
             }
             else
@@ -1008,7 +1008,7 @@ namespace RDR2Coop.Mod
             foreach (var kv in linkedPuppets)
             {
                 int damage = kv.Value.TakeHits(me.Handle, out int bone, OwnedWorld.Skip);   // our NPCs hurting their stand-in: theirs to feel (copies' hits are their own games')
-                if (damage > 0) _link.SendHit(kv.Key, 0, (short)Math.Min(damage, short.MaxValue), bone);
+                if (damage > 0) _link.SendHit(kv.Key, 0, Hit.FromTrap(damage), bone);
             }
             if (lead == myId) { _law.OwnerTick(_link, linkedPuppets, now); _doors.Tick(_link, lead, positions, now); }
             else _doors.Tick(_link, lead, null, now);
@@ -1041,9 +1041,10 @@ namespace RDR2Coop.Mod
         long _hitLogMs;
         void OnHit(byte from, Hit hit)
         {
-            if (!Hit.Sane(hit.Damage)) return;
             long nowMs = _clock.ElapsedMilliseconds;
-            if (nowMs - _hitLogMs > 1000) { _hitLogMs = nowMs; Log($"hit from {_link.NameOf(from)}: entity {hit.EntityId}, damage {hit.Damage} (we run area {_owner}, they follow {(_remotes.TryGetValue(from, out var rr) && rr.HasLast ? rr.Last.Following : -1)})"); }
+            bool sane = Hit.Sane(hit.Damage);
+            if (nowMs - _hitLogMs > 1000) { _hitLogMs = nowMs; Log($"hit from {_link.NameOf(from)}: entity {hit.EntityId}, damage {hit.Damage}{(sane ? "" : " (bad packet: dropped)")} (we run area {_owner}, they follow {(_remotes.TryGetValue(from, out var rr) && rr.HasLast ? rr.Last.Following : -1)})"); }
+            if (!sane) return;
             if (hit.EntityId != 0)
             {
                 // Only players in our area can shoot our NPCs.

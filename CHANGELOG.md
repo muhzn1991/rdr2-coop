@@ -4,6 +4,9 @@ Servers and players must run the same protocol version; when it changes, update
 the server's relay.py together with the mod.
 
 ## 0.9.0-beta.8.4.9 (beta, 1 Nov 2026) - protocol 13
+- A big hit from an NPC in a partner's area now reaches you: damage over 1000
+  is sent as 1000 instead of arriving as a packet your game threw away, so
+  you are hurt and knocked down there too.
 - Fixed in some players' games: the mod misread the game's yes/no answers, so
   every check came back "yes". You counted as dead while riding around,
   partners saw you as dead, and partners' copies could stand frozen in a

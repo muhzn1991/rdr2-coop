@@ -351,5 +351,9 @@ namespace RDR2Coop.Net
         public const int MaxDamage = 1000;          // no gun does more
         /// <summary>A hit's damage worth applying: a gun's, or the kill marker. Anything else is a bad packet.</summary>
         public static bool Sane(short damage) => damage >= 1 && (damage <= MaxDamage || damage == Kill);
+
+        /// <summary>The damage a trap read, as a Hit carries it: the cap Sane accepts, so a big hit reads as
+        /// MaxDamage instead of being dropped by the receiver (a mirror sender does the same).</summary>
+        public static short FromTrap(int damage) => (short)Math.Min(damage, MaxDamage);
     }
 }
