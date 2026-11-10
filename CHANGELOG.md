@@ -4,6 +4,9 @@ Servers and players must run the same protocol version; when it changes, update
 the server's relay.py together with the mod.
 
 ## 0.9.0-beta.8.4.9 (beta, 1 Nov 2026) - protocol 13
+- A partner's thrown fire bottle now goes off in your game too, not only in
+  theirs: when the bottle's own blast is no longer there to be named, the
+  thrown weapon says what it was.
 - Fixed in some players' games: the mod misread the game's yes/no answers, so
   every check came back "yes". You counted as dead while riding around,
   partners saw you as dead, and partners' copies could stand frozen in a

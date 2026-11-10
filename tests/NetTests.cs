@@ -2353,6 +2353,15 @@ static class NetTests
         var at = new Vec3(-283.12f, 790.45f, 118.3f);
         Check(Blast.Read(Blast.Write(25, at), out int kind, out var p) && kind == 25 && Vec3.Distance(p, at) < 0.01f, "dynamite round trip");
         Check(Blast.Read("2 -283.12 790.45 118.30 later-field", out kind, out _) && kind == 2, "fields a later version adds are ignored");
+        Check(Blast.ThrownMolotov == Hunting.Hash("WEAPON_THROWN_MOLOTOV") && Blast.ThrownDynamite == Hunting.Hash("WEAPON_THROWN_DYNAMITE"),
+              "the thrown weapons' hashes are the game's");
+        Check(Blast.FromWeapon(Blast.ThrownMolotov) == 2 && Blast.FromWeapon(Blast.ThrownDynamite) == 25 && Blast.FromWeapon(0x12345678) < 0,
+              "only thrown explosives map to a kind");
+        Check(Blast.Decide(-1, Blast.ThrownMolotov) == 2 && Blast.Decide(-1, Blast.ThrownDynamite) == 25,
+              "a thrown weapon names its blast when the game's tag is gone");
+        Check(Blast.Decide(3, Blast.ThrownMolotov) == 3 && Blast.Decide(27, Blast.ThrownDynamite) == 27,
+              "the tag the game showed wins (a volatile bottle stays volatile)");
+        Check(Blast.Decide(-1, 0x12345678) < 0 && Blast.Decide(5, 0) < 0, "a gun's wagon blast stays ours alone");
         Check(!Blast.Read("5 1 2 3", out _, out _) && !Blast.Read("33 1 2 3", out _, out _), "a wagon's or lightning's explosion isn't passed on");
         foreach (var bad in new[] { null, "", "25 1 2", "x 1 2 3", "25 NaN 2 3", "25 1 Infinity 3", "25 1 2 30000", "25 1,5 2 3" })
             Check(!Blast.Read(bad, out _, out _), "refused: " + (bad ?? "null"));

@@ -76,8 +76,9 @@ namespace RDR2Coop.Mod
                 if (other >= 0) s.Other = other;
                 if (s.Kind < 0 && now - s.Ms < 600) { _ours[i] = s; continue; }   // not showing yet: look again next frame
                 _ours.RemoveAt(i);
-                if (s.Kind < 0 && s.Other < 0)
-                    s.Kind = s.Weapon == MISC.GET_HASH_KEY("WEAPON_THROWN_DYNAMITE") ? 25 : s.Weapon == MISC.GET_HASH_KEY("WEAPON_THROWN_MOLOTOV") ? 2 : -1;
+                // Not the tag we pass on (a fire bottle's own explosion is gone, only its fire is
+                // there): a thrown weapon still says what it was.
+                s.Kind = Blast.Decide(s.Kind, s.Weapon);
                 if (s.Kind < 0) { Note($"explosions: ours (weapon {s.Weapon:X8}, tag {s.Other}) isn't a kind we pass on", now); continue; }
                 if (!_outGate.Allow(now)) continue;
                 _sent.Add(s);

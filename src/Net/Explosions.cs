@@ -18,10 +18,26 @@ namespace RDR2Coop.Net
             { 30, "fire arrow" }, { 31, "dynamite arrow" }, { 32, "phosphorus round" }, { 35, "poison bottle" },
         };
 
+        // The thrown weapons whose blast the game can report without a tag we know: a fire
+        // bottle's own explosion is gone before the next tick, and the fire it leaves is another,
+        // unpassed tag. Their weapon hash (joaat) -> the kind to send. Only these, so a gun's
+        // wagon or barrel blast still stays in the shooter's game.
+        public const uint ThrownMolotov = 0x7067E7A7;   // WEAPON_THROWN_MOLOTOV
+        public const uint ThrownDynamite = 0xA64DAA5E;  // WEAPON_THROWN_DYNAMITE
+
         public const float MaxFromThrower = 250f;   // a scoped rifle's explosive round can land this far off
         const float WorldLimit = 20000f;            // as Protocol's: nothing on the map is further out
 
         public static string Name(int kind) => Kinds.TryGetValue(kind, out var n) ? n : "explosion " + kind;
+
+        // The kind a thrown weapon's blast is, or -1 for anything else (a gun, a bow).
+        public static int FromWeapon(uint weapon) =>
+            weapon == ThrownMolotov ? 2 : weapon == ThrownDynamite ? 25 : -1;
+
+        // What to send for one of our blasts: the tag the game showed (a bundle stays a bundle,
+        // a volatile bottle volatile), else the thrown weapon's kind, else -1. A fire bottle's
+        // fire tag must not hide it.
+        public static int Decide(int shown, uint weapon) => Kinds.ContainsKey(shown) ? shown : FromWeapon(weapon);
 
         public static string Write(int kind, Vec3 at) =>
             string.Format(CultureInfo.InvariantCulture, "{0} {1:0.00} {2:0.00} {3:0.00}", kind, at.X, at.Y, at.Z);
