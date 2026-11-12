@@ -165,11 +165,13 @@ namespace RDR2Coop.Mod
             // the weapon the host's NPC used (Hit.Weapon is 0 on the ANY_PED-only path).
             int health = ENTITY.GET_ENTITY_HEALTH(_ped);
             bool damaged = health < Peds.TrapHealth;
-            bool anyPed = damaged && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(_ped);
-            bool eventPed = damaged && Peds.EventSaysPedHit(_ped, myPed, now, out weapon);
+            var who = damaged ? Peds.EventSaysPedHit(_ped, myPed, now, out weapon, ignoreAlso) : Peds.Attributed.None;
+            bool eventPed = who == Peds.Attributed.Ped;
+            bool friendlyNamed = who == Peds.Attributed.Friendly;   // our own side's hit: never the partner's
+            bool anyPed = damaged && !friendlyNamed && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(_ped);
             if (eventPed && !anyPed) NoteEventFallback(now);
-            if (damaged && !anyPed && !eventPed) NoteUnattributed(Peds.TrapHealth - health, now);
-            return Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso, eventPed);
+            if (damaged && !friendlyNamed && !anyPed && !eventPed) NoteUnattributed(Peds.TrapHealth - health, now);
+            return Peds.TakeTrapped(_ped, 0, myPed, out bone, ignoreAlso, eventPed, friendlyNamed);
         }
 
         static long _eventFallbackLogMs, _unattributedLogMs;

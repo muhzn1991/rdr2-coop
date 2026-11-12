@@ -6,7 +6,10 @@ the server's relay.py together with the mod.
 ## 0.9.0-beta.8.4.9 (beta, 1 Nov 2026) - protocol 13
 - An NPC in a partner's area that shoots you now hurts you in your own game
   too, and a hard or head hit can throw you down; your partners see the same
-  fall, because your game decides it and reports it.
+  fall, because your game decides it and reports it. A hard hit no longer
+  throws you off your horse, out of a wagon or into a swim: only on foot does
+  it knock you down. Your own side (your horse, companions, another player's
+  stand-in) never counts as an NPC hit on a partner.
 - A big hit from an NPC in a partner's area now reaches you: damage over 1000
   is sent as 1000 instead of arriving as a packet your game threw away, so
   you are hurt and knocked down there too.

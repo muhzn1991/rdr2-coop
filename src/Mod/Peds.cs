@@ -170,11 +170,41 @@ namespace RDR2Coop.Mod
         // EVENT_ENTITY_DAMAGED: 0 damaged, 1 damager (ped or object), 2 weapon, 3 ammo, 4 damage, 6-8 coords.
         const uint EntityDamagedEvent = 0x18010D37;
 
-        // Whether this tick's damage event names a ped (not `ignore`) as the one that hurt `ped`: the
-        // fallback for HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, which may not count NPC weapon damage.
-        public static unsafe bool EventSaysPedHit(int ped, int ignore, long now, out uint weapon)
+        // What one tick's damage events say about who hurt `ped`.
+        public enum Attributed
+        {
+            None,      // no event at all (the trap may still have lost health: cause B)
+            Ped,       // a ped that isn't on our side
+            Friendly,  // only our own side was named (our player, horse, a companion, another stand-in)
+        }
+
+        // A ped that is on our side: it never becomes an NPC hit on a partner, even when the game
+        // names it as the damager. Stand-ins share the PLAYER group, our horses are ours, and
+        // companions are relationship companion/respect/like (<= 2). A neutral ped (3) is an
+        // ordinary NPC and still counts, as before.
+        public static bool FriendlyTo(int ped, int me)
+        {
+            if (ped == 0) return true;
+            if (PED.IS_PED_A_PLAYER(ped)) return true;   // a real player's ped is never an NPC
+            if (me != 0)
+            {
+                if (ped == me || PED.GET_RELATIONSHIP_BETWEEN_PEDS(ped, me) <= 2) return true;
+                if (PED.IS_PED_GROUP_MEMBER(ped, PLAYER.GET_PLAYER_GROUP(PLAYER.PLAYER_ID()), false)) return true;
+            }
+            if (PED.GET_PED_RELATIONSHIP_GROUP_HASH(ped) == MISC.GET_HASH_KEY("PLAYER")) return true;   // stand-ins
+            int horse = Game.Player.ActiveHorse?.Handle ?? 0;
+            if (horse != 0 && ped == horse) return true;
+            var rider = Game.Player.Character;
+            return rider != null && rider.IsOnMount && rider.CurrentMount != null && ped == rider.CurrentMount.Handle;
+        }
+
+        // What this tick's damage event says about `ped`: the fallback for
+        // HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, which may not count NPC weapon damage. A named
+        // friendly is reported as Friendly so the ANY_PED fallback can't turn it into a hit.
+        public static unsafe Attributed EventSaysPedHit(int ped, int ignore, long now, out uint weapon, ICollection<int> ignoreAlso = null)
         {
             weapon = 0;
+            bool friendly = false;
             var events = AiEvents.Now(now);
             ulong* data = stackalloc ulong[9];
             for (int i = 0; i < events.Count; i++)
@@ -182,17 +212,19 @@ namespace RDR2Coop.Mod
                 if (events[i] != EntityDamagedEvent || !SCRIPTS.GET_EVENT_DATA(AiEvents.Queue, i, data, 9)) continue;
                 if (unchecked((int)data[0]) != ped) continue;
                 int damager = unchecked((int)data[1]);
-                if (damager == 0 || damager == ignore || !Exists(damager) || !ENTITY.IS_ENTITY_A_PED(damager) || PED.IS_PED_A_PLAYER(damager)) continue;
+                if (damager == 0 || !Exists(damager) || !ENTITY.IS_ENTITY_A_PED(damager)) continue;
+                if (FriendlyTo(damager, ignore) || (ignoreAlso != null && ignoreAlso.Contains(damager))) { friendly = true; continue; }
                 weapon = unchecked((uint)data[2]);
-                return true;
+                return Attributed.Ped;
             }
-            return false;
+            return friendly ? Attributed.Friendly : Attributed.None;
         }
 
         // Damage dealt by a ped since the last check (0 if none). `attacker`
-        // restricts it to one ped; `ignore` skips one ped (friendly fire).
+        // restricts it to one ped; `ignore` is us (our own hits are friendly fire).
         // anyPedFallback: the event queue already named a ped (see EventSaysPedHit).
-        public static unsafe int TakeTrapped(int ped, int attacker, int ignore, out int bone, ICollection<int> ignoreAlso = null, bool anyPedFallback = false)
+        // friendlyNamed: the queue named only our side, so ANY_PED must not relay it.
+        public static unsafe int TakeTrapped(int ped, int attacker, int ignore, out int bone, ICollection<int> ignoreAlso = null, bool anyPedFallback = false, bool friendlyNamed = false)
         {
             bone = 0;
             int health = ENTITY.GET_ENTITY_HEALTH(ped);
@@ -200,8 +232,10 @@ namespace RDR2Coop.Mod
 
             bool byPed = attacker != 0
                 ? ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, attacker, true, true)
-                : ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(ped) || anyPedFallback;
+                : !friendlyNamed && (ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED(ped) || anyPedFallback);
             if (ignore != 0 && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, ignore, true, true)) byPed = false;
+            int horse = ignore != 0 ? (Game.Player.ActiveHorse?.Handle ?? 0) : 0;
+            if (byPed && horse != 0 && ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, horse, true, true)) byPed = false;   // our own horse hurt the stand-in: friendly fire
             if (byPed && ignoreAlso != null) foreach (int h in ignoreAlso) if (ENTITY.HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(ped, h, true, true)) { byPed = false; break; }   // only once damaged: rare
 
             int b = 0;

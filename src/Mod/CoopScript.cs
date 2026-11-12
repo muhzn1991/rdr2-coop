@@ -1085,6 +1085,9 @@ namespace RDR2Coop.Mod
         static void Stagger(Ped me, Hit hit)
         {
             if (!Hit.Ragdolls(hit.Damage, hit.Bone) || PED.IS_PED_RAGDOLL(me.Handle)) return;
+            // In a saddle, a seat or the water a second ragdoll throws us out of it; the damage is
+            // already applied, and the game's own dismount/finisher owns that reaction (Cole, RCP-17).
+            if (me.IsOnMount || PED.IS_PED_IN_ANY_VEHICLE(me.Handle, false) || PED.IS_PED_SWIMMING(me.Handle)) return;
             var f = ENTITY.GET_ENTITY_FORWARD_VECTOR(me.Handle);
             PED.SET_PED_TO_RAGDOLL_WITH_FALL(me.Handle, 600, 1200, 0, -f.X, -f.Y, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
         }
